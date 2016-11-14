@@ -1,3 +1,5 @@
+import random
+import math
 import pyglet
 from pyglet.window import key
 
@@ -9,14 +11,14 @@ pyglet.gl.glClearColor(0.129, 0.129, 0.129, 1)  # Primary text color
 
 object_batch = pyglet.graphics.Batch()
 
-body_image = pyglet.resource.image('body.png')
 head_image = pyglet.resource.image('head.png')
-body_image.width, body_image.height = 20, 20
-head_image.width, head_image.height = 20, 20
+body_image = pyglet.resource.image('body.png')
+food_image = pyglet.resource.image('food.png')
 
-images = [body_image, head_image]
+images = [head_image, body_image, food_image]
 
 for image in images:
+    image.width, image.height = 20, 20
     image.anchor_x = image.width / 2
     image.anchor_y = image.width / 2
 
@@ -53,10 +55,26 @@ class SnakeBody(pyglet.sprite.Sprite):
         self.x, self.y = pos_x, pos_y
 
 
+class Food(pyglet.sprite.Sprite):
+    def __init__(self, *args, **kwargs):
+        super(Food, self).__init__(*args, **kwargs)
+
+    def eaten(self):
+        self.x = random.randint(0, 800)
+        self.y = random.randint(0, 600)
+
+
 lb_score = pyglet.text.Label(text="Score: 0", x=10, y=10, batch=object_batch)
 snake_head = SnakeHead(img=head_image, x=800//2, y=600//2, batch=object_batch)
+food = Food(img=food_image, x=random.randint(0, 800),
+            y=random.randint(0, 600), batch=object_batch)
 
 snake_bodies = []
+
+
+def collision(obj1_x, obj1_y, obj2_x, obj2_y, margin):
+    distance = math.sqrt(((obj2_x - obj1_x) ** 2) + ((obj2_y - obj1_y) ** 2))
+    return distance < margin
 
 
 @window.event
@@ -75,6 +93,8 @@ def on_key_press(symbol, modifier):
         snake_head.direction = 'RIGHT'
     elif symbol == key.LEFT:
         snake_head.direction = 'LEFT'
+
+    # Debug keys
     elif symbol == key.SPACE:
         snake_bodies.append(
             SnakeBody(img=body_image,
@@ -83,6 +103,8 @@ def on_key_press(symbol, modifier):
                       batch=object_batch
                       )
         )
+    elif symbol == key.C:
+        food.eaten()
 
 
 def update(dt):
@@ -91,6 +113,9 @@ def update(dt):
         body.update(dt,
                     snake_head.past_location[-index-2][0],
                     snake_head.past_location[-index-2][1])
+
+    if collision(snake_head.x, snake_head.y, food.x, food.y, 20):
+        print("EAT!!")
 
 
 if __name__ == "__main__":
