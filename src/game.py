@@ -5,7 +5,7 @@ from pyglet.window import key
 pyglet.resource.path = ['../resources']
 pyglet.resource.reindex()
 
-window = pyglet.window.Window(800, 600)
+window = pyglet.window.Window(800, 600, caption="Snake")
 pyglet.gl.glClearColor(0.129, 0.129, 0.129, 1)  # Primary text color
 
 object_batch = pyglet.graphics.Batch()
@@ -40,6 +40,17 @@ class SnakeHead(pyglet.sprite.Sprite):
             self.x += int(SnakeHead.MOVE_SPEED * dt)
         elif self.direction == 'LEFT':
             self.x -= int(SnakeHead.MOVE_SPEED * dt)
+
+        # Wrap around the window
+        if self.x > window.width:
+            self.x = 0
+        elif self.x < 0:
+            self.x = window.width
+
+        if self.y > window.height:
+            self.y = 0
+        elif self.y < 0:
+            self.y = window.height
 
         self.past_location.append((self.x, self.y))
 
