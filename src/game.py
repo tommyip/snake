@@ -1,5 +1,4 @@
 import random
-import math
 import pyglet
 from pyglet.window import key
 
@@ -24,7 +23,8 @@ for image in images:
 
 
 class SnakeHead(pyglet.sprite.Sprite):
-    MOVE_SPEED = 120
+    MOVE_SPEED = 210
+    score = 0
 
     def __init__(self, *args, **kwargs):
         super(SnakeHead, self).__init__(*args, **kwargs)
@@ -63,9 +63,11 @@ class Food(pyglet.sprite.Sprite):
         self.x = random.randint(0, 800)
         self.y = random.randint(0, 600)
 
-
 lb_score = pyglet.text.Label(text="Score: 0", x=10, y=10, batch=object_batch)
-snake_head = SnakeHead(img=head_image, x=800//2, y=600//2, batch=object_batch)
+snake_head = SnakeHead(img=head_image,
+                       x=random.randint(0, window.width),
+                       y=random.randint(0, window.height),
+                       batch=object_batch)
 food = Food(img=food_image, x=random.randint(0, 800),
             y=random.randint(0, 600), batch=object_batch)
 
@@ -73,8 +75,8 @@ snake_bodies = []
 
 
 def collision(obj1_x, obj1_y, obj2_x, obj2_y, margin):
-    distance = math.sqrt(((obj2_x - obj1_x) ** 2) + ((obj2_y - obj1_y) ** 2))
-    return distance < margin
+    distance = (obj2_x - obj1_x) ** 2 + (obj2_y - obj1_y) ** 2
+    return distance < margin ** 2
 
 
 @window.event
@@ -115,9 +117,18 @@ def update(dt):
                     snake_head.past_location[-index-2][1])
 
     if collision(snake_head.x, snake_head.y, food.x, food.y, 20):
-        print("EAT!!")
+        food.eaten()
+        snake_bodies.append(
+            SnakeBody(img=body_image,
+                      x=snake_head.past_location[-SnakeBody.id-2][0],
+                      y=snake_head.past_location[-SnakeBody.id-2][1],
+                      batch=object_batch
+                      )
+        )
+        snake_head.score += 1
+        lb_score.text = "Score: " + str(snake_head.score)
 
 
 if __name__ == "__main__":
-    pyglet.clock.schedule_interval(update, 1/6)
+    pyglet.clock.schedule_interval(update, 1/10)
     pyglet.app.run()
