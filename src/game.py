@@ -66,17 +66,7 @@ class Game:
         self.score += 1
         self.lb_score.text = "Score: " + str(self.score)
 
-    def food_alive(self):
-        """ Check if food is eaten by comparing the distance between them to
-        the margin: 20 units. To improve performance, the square root function
-        is avoid by square the the distance -> 20^2 = 400
-        """
-        distance = (self.snake_head.x - self.food.x) ** 2 + \
-                   (self.snake_head.y - self.food.y) ** 2
-        return distance > 400
-
     def game_end(self):
-        print(SnakeBody.bodies)
         self.game_running = False
         self.lb_score.delete()
         self.snake_head.delete()
@@ -96,6 +86,7 @@ class Game:
 
 class SnakeHead(pyglet.sprite.Sprite):
     VELOCITY = 210
+    MIN_COLLISION_DISTANCE = 20
 
     def __init__(self, *args, **kwargs):
         super(SnakeHead, self).__init__(*args, **kwargs)
@@ -105,6 +96,7 @@ class SnakeHead(pyglet.sprite.Sprite):
     def update(self, dt):
         """ Move snake head base on current direction and append the new
         location for the bodies to follow. """
+
         if self.direction == 'FORWARD':
             self.y += int(SnakeHead.VELOCITY * dt)
             self.rotation = 0
@@ -147,6 +139,14 @@ class SnakeHead(pyglet.sprite.Sprite):
         elif self.y < 0:
             self.y = WINDOW_HEIGHT
 
+    def collision(self, target):
+        """ Check for collision using the pythagorean theorem. The margin is
+        squared to avoid using square root function on the distance which is
+        computationally expensive. """
+        distance = (self.x - target.x) ** 2 + (self.y - target.y) ** 2
+
+        return distance < SnakeHead.MIN_COLLISION_DISTANCE ** 2
+
 
 class SnakeBody(pyglet.sprite.Sprite):
     num_of_bodies = 0
@@ -184,17 +184,16 @@ def on_draw():
 
 @window.event
 def on_key_press(symbol, modifier):
-    if symbol == key.UP:
+    """ Set direction to keypress if it is not currently going the
+    opposite way """
+    if symbol == key.UP and game.snake_head.direction != 'BACKWARD':
         game.snake_head.direction = 'FORWARD'
-    elif symbol == key.DOWN:
+    elif symbol == key.DOWN and game.snake_head.direction != 'FORWARD':
         game.snake_head.direction = 'BACKWARD'
-    elif symbol == key.RIGHT:
+    elif symbol == key.RIGHT and game.snake_head.direction != 'LEFT':
         game.snake_head.direction = 'RIGHT'
-    elif symbol == key.LEFT:
+    elif symbol == key.LEFT and game.snake_head.direction != 'RIGHT':
         game.snake_head.direction = 'LEFT'
-
-    elif symbol == key.SPACE:
-        game.game_end()
 
 
 def update(dt):
@@ -208,11 +207,15 @@ def update(dt):
                 game.snake_head.trail[body_offset][1]
             )
 
-        if not game.food_alive():
+        if game.snake_head.collision(game.food):
             game.food.eaten()
             game.snake_head.new_body()
             game.bump_score()
 
+        # Check collision with bodies
+        for body in SnakeBody.bodies:
+            if game.snake_head.collision(body):
+                game.game_end()
 
 if __name__ == "__main__":
     pyglet.clock.schedule_interval(update, 1/10)
