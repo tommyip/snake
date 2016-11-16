@@ -28,16 +28,26 @@ fps = FPSDisplay(window)
 
 class Game:
     def __init__(self):
+        self.game_running = True
         self.score = 0
         self.lb_score = pyglet.text.Label(
             text="Score: 0",
             font_name="Roboto",
             font_size=20,
             bold=True,
-            color=(117, 117, 117, 117),
+            color=(117, 117, 117, 255),
             x=WINDOW_WIDTH-25, y=WINDOW_HEIGHT-20,
             anchor_x="right", anchor_y="top",
             batch=object_batch)
+
+        self.lb_outcome = pyglet.text.HTMLLabel(
+            width=600,
+            anchor_x="center", anchor_y="center",
+            x=WINDOW_WIDTH//2, y=WINDOW_HEIGHT//2,
+            multiline=True,
+            batch=object_batch
+        )
+        self.lb_outcome.visible = False
 
         self.snake_head = SnakeHead(
             img=head_image,
@@ -52,8 +62,36 @@ class Game:
             batch=object_batch)
 
     def bump_score(self):
+        """ Update score label """
         self.score += 1
         self.lb_score.text = "Score: " + str(self.score)
+
+    def food_alive(self):
+        """ Check if food is eaten by comparing the distance between them to
+        the margin: 20 units. To improve performance, the square root function
+        is avoid by square the the distance -> 20^2 = 400
+        """
+        distance = (self.snake_head.x - self.food.x) ** 2 + \
+                   (self.snake_head.y - self.food.y) ** 2
+        return distance > 400
+
+    def game_end(self):
+        print(SnakeBody.bodies)
+        self.game_running = False
+        self.lb_score.delete()
+        self.snake_head.delete()
+        for body in SnakeBody.bodies:
+            body.delete()
+        self.food.delete()
+
+        self.lb_outcome.text = """\
+            <center>
+                <h1>You lose</h1><br>
+                <h3>Score: {}</h3>
+            </center>""".format(str(self.score))
+        self.lb_outcome.font_name = "Roboto"
+        self.lb_outcome.color = (255, 255, 255, 255)
+        self.lb_outcome.visible = True
 
 
 class SnakeHead(pyglet.sprite.Sprite):
@@ -133,12 +171,8 @@ class Food(pyglet.sprite.Sprite):
         self.x = random.randint(0, 800)
         self.y = random.randint(0, 600)
 
+
 game = Game()
-
-
-def collision(obj1, obj2, margin):
-    distance = (obj2.x - obj1.x) ** 2 + (obj2.y - obj1.y) ** 2
-    return distance < margin ** 2
 
 
 @window.event
@@ -159,21 +193,25 @@ def on_key_press(symbol, modifier):
     elif symbol == key.LEFT:
         game.snake_head.direction = 'LEFT'
 
+    elif symbol == key.SPACE:
+        game.game_end()
+
 
 def update(dt):
-    game.snake_head.update(dt)
-    for index, snake_body in enumerate(SnakeBody.bodies):
-        body_offset = - (index + 2)
-        snake_body.update(
-            dt,
-            game.snake_head.trail[body_offset][0],
-            game.snake_head.trail[body_offset][1]
-        )
+    if game.game_running:
+        game.snake_head.update(dt)
+        for index, snake_body in enumerate(SnakeBody.bodies):
+            body_offset = - (index + 2)
+            snake_body.update(
+                dt,
+                game.snake_head.trail[body_offset][0],
+                game.snake_head.trail[body_offset][1]
+            )
 
-    if collision(game.snake_head, game.food, 20):
-        game.food.eaten()
-        game.snake_head.new_body()
-        game.bump_score()
+        if not game.food_alive():
+            game.food.eaten()
+            game.snake_head.new_body()
+            game.bump_score()
 
 
 if __name__ == "__main__":
